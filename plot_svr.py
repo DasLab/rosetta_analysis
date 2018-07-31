@@ -67,18 +67,10 @@ def plot(filename: List[str], scoreidx: int, rmsidx: int, dump: bool, outfile_fo
         mins.append(min(scores))
         maxes.append(min(max([score for score in scores if score <= pctilescore]), min(scores)+100))
 
-<<<<<<< Updated upstream
-=======
-    scores = [float(line.split()[scoreidx]) for line in lines if floatable(line.split()[scoreidx])]
-    rmsds = [float(line.split()[rmsidx]) for line in lines if floatable(line.split()[rmsidx])]
-    print(len(scores), len(rmsds))
-    plt.scatter(rmsds, scores)
->>>>>>> Stashed changes
 
     scoremax = sorted(scores)[int(0.95*len(scores))]
     # Arbitrarily set ymax to be 0 to exclude FARFAR outliers.
     # Later develop a smart strategy having to do with actual outlier detection
-<<<<<<< Updated upstream
     # Strategy: get range of min and max, expand by 5% either way.
     ymin, ymax = min(mins), max(maxes)
     ymin2, ymax2 = ymin - (ymax - ymin)*0.05, ymax + (ymax - ymin)*0.05
@@ -87,9 +79,6 @@ def plot(filename: List[str], scoreidx: int, rmsidx: int, dump: bool, outfile_fo
     #plt.show()
     #plt.ylim([-15,-3])
     plt.xlim([0, xmax])
-=======
-    plt.ylim([min(scores)-10, max([score for score in scores if score < scoremax])+10])
->>>>>>> Stashed changes
 
     if dump:
         plt.savefig("%s.%s" % ("_".join(filename), outfile_format))
