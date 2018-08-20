@@ -37,6 +37,17 @@ def detect_rms_col(filename: str) -> int:
     rmsidx = detect_named_col(filename, ["rms", "rms_fill", "new_rms", "rms_stem"], rmsidx)
     return rmsidx
 
+def output_name(filenames: List[str]):
+	"""
+	Returns _-joined by default, but if there's a common dir prefix, removes most of it.
+	"""
+	if '/' not in filenames[0]:
+		return '_'.join(filenames)
+	else:
+		print("\"{}\"".format(filenames[0][:filenames[0].index('/')]))
+		print(list(map(lambda f: f[f.index('/')+1:], filenames)))
+
+		return filenames[0][:filenames[0].index('/')]+'/'+'_'.join(list(map(lambda f: f[f.index('/')+1:], filenames)))
 
 def plot(filename: List[str], scoreidx: int, rmsidx: int, dump: bool, outfile_format: str, xmax: float) -> None: 
     scores = []
@@ -49,8 +60,8 @@ def plot(filename: List[str], scoreidx: int, rmsidx: int, dump: bool, outfile_fo
    
     mins, maxes = [], []
     for lines in lines_arr:
-        if scoreidx == -1: scoreidx = detect_score_col(lines)
-        if rmsidx == -1: rmsidx = detect_rms_col(lines)
+        if scoreidx == -1 or len(lines_arr) > 1: scoreidx = detect_score_col(lines)
+        if rmsidx == -1 or len(lines_arr) > 1: rmsidx = detect_rms_col(lines)
 
         scores = [float(line.split()[scoreidx]) for line in lines if floatable(line.split()[scoreidx])]
         rmsds = [float(line.split()[rmsidx]) for line in lines if floatable(line.split()[rmsidx])]
@@ -81,7 +92,7 @@ def plot(filename: List[str], scoreidx: int, rmsidx: int, dump: bool, outfile_fo
     plt.xlim([0, xmax])
 
     if dump:
-        plt.savefig("%s.%s" % ("_".join(filename), outfile_format))
+        plt.savefig("%s.%s" % (output_name(filename), outfile_format))
     else:
         plt.show()
 
