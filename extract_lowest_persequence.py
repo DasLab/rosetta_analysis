@@ -45,13 +45,13 @@ def most_common(seq_to_score_dict, num_limit, best_median_scores=None):
     seq_to_freq = { seq: len(seq_to_score_dict[seq]) for seq in seq_to_score_dict.keys() }
     i = 1
     most_populated_sequences = []
-    print seq_to_freq
+    #print seq_to_freq
     for seq, pop in sorted(seq_to_freq.iteritems(), key=lambda (k,v): (v,k), reverse=True):
         if best_median_scores is not None and not seq in best_median_scores: continue
         most_populated_sequences.append(seq)
         if i >= num_limit: break
         i += 1
-    print "most_populated_sequences",most_populated_sequences
+    print "most_populated_sequences", [(s, seq_to_freq[s]) for s in most_populated_sequences]
     return most_populated_sequences
 
 def best_medians(seq_to_score_dict, num_limit):
@@ -145,6 +145,7 @@ def get_best_n_decoys_per_sequence(tag_to_score, tag_to_sequence, n):
     combined2 = {}
     for tag in tag_to_sequence.keys():
         seq = tag_to_sequence[tag]
+        if seq == '': continue
         if not tag in tag_to_score: continue
         score = tag_to_score[tag]
         if seq in combined.keys():

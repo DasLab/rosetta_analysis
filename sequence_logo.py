@@ -41,16 +41,15 @@ def most_common(seq_to_score_dict, num_limit, best_median_scores=None):
 
     seq_to_freq = { seq: len(seq_to_score_dict[seq]) for seq in seq_to_score_dict.keys() }
     i = 1
-    #most_populated_sequences = []
-    most_populated_sequences = {}
+    most_populated_sequences = []
     print seq_to_freq
     for seq, pop in sorted(seq_to_freq.iteritems(), key=lambda (k,v): (v,k), reverse=True):
         if best_median_scores is not None and not seq in best_median_scores: continue
-        most_populated_sequences[seq] = pop#.append(seq)
+        most_populated_sequences.append(seq)
         if i >= num_limit: break
         i += 1
     print "most_populated_sequences",most_populated_sequences
-    return most_populated_sequences.keys()
+    return most_populated_sequences
 
 def best_medians(seq_to_score_dict, num_limit):
     """
@@ -100,8 +99,8 @@ def make_lambda(seq):
 
     indices = []
     for i,c in enumerate(seq):
-        if c in ['n', 'b', 'd', 'h', 'v', 'y', 'r', 'w', 's', 'm', 'k']: indices.append(i)
-
+        if c == 'n': indices.append(i)
+    print indices
     return lambda(st): "".join([c for i,c in enumerate(st) if i in indices])
 
 def data_frame_input_format(tag_score, tag_sequence, include_sequences):
@@ -150,8 +149,7 @@ def process_silent(outfile):
             tag_to_score[tag] = float(objs[score_id])
 
         if 'ANNOTATED_SEQUENCE:' in objs:
-            if len(seq_slice(no_bracketed(objs[1]))) != 0:
-                tag_to_sequence[objs[-1]] = seq_slice(no_bracketed(objs[1]))
+            tag_to_sequence[objs[-1]] = seq_slice(no_bracketed(objs[1]))
     return tag_to_score, tag_to_sequence
 
 def sorted_by_median(most_populated_sequences, seq_to_score_dict):
@@ -162,45 +160,37 @@ def sorted_by_median(most_populated_sequences, seq_to_score_dict):
         sorted_list.append(seq)
     return sorted_list
 
-def sequence_recovery(outfile, image_format, num_limit, consider_best_medians, native, skip_incomplete):
+def sequence_recovery(outfile, image_format):
 
     tag_to_score, tag_to_sequence = process_silent(outfile)
-    sequence_to_scores = combine_dicts(tag_to_score, tag_to_sequence, which_values_are_key=2)
+    # Top 5% of models
+    sequences = []
+    for tag, _ in sorted( tag_to_score.iteritems(), key=lambda (k,v): (v,k))[0:len(tag_to_score.keys())/20]:
+        sequences.append(tag_to_sequence[tag])
 
-    # Filter for the top -- say -- 16 most often recovered sequences.
-    if consider_best_medians:
-        best_median_scores = best_medians(sequence_to_scores, num_limit*2)
-        most_populated_sequences = most_common(sequence_to_scores, num_limit, best_median_scores)
-    else:
-        most_populated_sequences = most_common(sequence_to_scores, num_limit)
+    #print sequences
 
-    # convert to dataframe
-    protodf = data_frame_input_format(tag_to_score, tag_to_sequence, most_populated_sequences)
-    df = pandas.DataFrame.from_dict(protodf)
-    g = sns.violinplot(x='sequence', y='score', data=df, 
-            #order=sorted(sequence_to_scores.keys()),
-            #order=sorted(most_populated_sequences),
-            # sort by median score
-            order=sorted_by_median(most_populated_sequences, sequence_to_scores),
-            dodge=False)
-    if native is not None:
-        g.set_title("native seq: {}".format(native))
-    for item in g.get_xticklabels(): item.set_rotation(45)
+    g_frac = [float(len([c for c in [seq[i] for seq in sequences] if c == 'g']))/float(len(sequences)) for i in xrange(len(sequences[0]))]
+    #print g_frac
 
-    plt.tight_layout()
 
-    # if image format is 'complex' do each 
-    image_formats = image_format.split(',')
-    for fmt in image_formats: plt.savefig("%s.%s" % (outfile, fmt))
+    with open("tmp.fa", "w") as f:
+        for seq in sequences:
+            f.write("{}\n".format(seq))
+
+    flags = "--size large -a acgu -F {fmt} -C yellow a 'Adenosine' -C green c 'Cytosine' -C red g 'Guanosine' -C blue u 'Uridine'".format(fmt=image_format) 
+    import os
+    os.system("weblogo {flags} < tmp.fa > sequence_logo.{fmt}".format(flags=flags, fmt=image_format))
+    
+    return
+
+    #image_formats = image_format.split(',')
+    #for fmt in image_formats: plt.savefig("%s.%s" % (outfile, fmt))
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Process a design simulation silent file for sequence recovery, assuming FULL SEQUENCE/ ANNOTATED_SEQUENCE are present.')
     parser.add_argument('silent', metavar='silent', type=str, help='Silent file to be parsed')
     parser.add_argument('--image_format', dest='fmt', metavar='format', default='png', type=str, nargs='?', help='File format for output. svg, png are perhaps preferred; separate multiple formats with commas.') 
-    parser.add_argument('--num_sequences', dest='num_limit', metavar='limit', default=0, type=int, nargs='?', help='Number of sequences to retain for plotting (default: all).') 
-    parser.add_argument('--best_medians', dest='median_filter', metavar='limit', default=True, type=bool, nargs='?', help='Consider only the nlimit*2 sequences with the best median scores.') 
-    parser.add_argument('--native', dest='native', default=None, type=str, nargs='?', help='Native sequence for the residues in question')
-    parser.add_argument('--skip_incomplete', dest='skip_incomplete', action='store_true', help='skip incomplete seqs')
     args = parser.parse_args()
 
-    sequence_recovery(args.silent, args.fmt, args.num_limit, args.median_filter, args.native, args.skip_incomplete)
+    sequence_recovery(args.silent, args.fmt)
